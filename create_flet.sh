@@ -17,7 +17,7 @@ BUILD_SRC="${BUILD_ROOM}/src"
 
 ENTER_POINT=${ENTER_POINT:=${BUILD_ROOM}}
 
-cp ~/.bashrc TOOL/.
+# cp ~/.bashrc TOOL/.
 
 if [ ! -f "${AFTER_SHELL}" ];then
 	cp ${AFTER_SHELL} .
