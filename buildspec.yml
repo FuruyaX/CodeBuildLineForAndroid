@@ -2,6 +2,8 @@ version: 0.2
 
 env:
   variables:
+    # Define the Docker images to be built and pushed
+    # These images will be pushed to Amazon ECR
     ANDROID_IMAGE: builder/android
     FLET_IMAGE: builder/flet
   git-credential-helper: yes
