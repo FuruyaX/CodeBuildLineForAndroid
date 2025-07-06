@@ -40,7 +40,7 @@ RUN export TOOL=$TOOL
 RUN export BUILD_HOME=$BUILD_HOME
 RUN mkdir -p ${BUILD_HOME}
 COPY TOOL/${START_SHELL} ${TOOL}/.
-COPY TOOL/.bashrc ${TOOL}/.
+# COPY TOOL/.bashrc ${TOOL}/.
 WORKDIR ${TOOL}
 RUN wget https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
 RUN wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip?hl=ja -O cmd_tool.zip
