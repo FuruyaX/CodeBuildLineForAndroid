@@ -1,28 +1,37 @@
 #!/bin/bash
-#
-# set -x
-ENTER_DIR=$1
-# VENV=$2
-USER=${USER:=$(whoami)}
-TOOLBOX=${HOME}/TOOL
-VENV=${VENV:=${TOOLBOX}/venv}
-echo "source ${VENV}/bin/activate" >> /home/${USER}/.bashrc	
-cd ${TOOLBOX}
-# unzip cmd_tool.zip
-# unzip gradle-8.11.1-bin.zip
-# unzip android-ndk-r27c-linux.zip
-set +x
 
-if [[ "${ENTER_DIR}" == "" ]];then
-	cd /home/${USER}
-elif [ -d /home/${USER}/${ENTER_DIR} ];then
-	cd /home/$USER
-elif [ -d ${ENTER_DIR} ];then
-	cd ${ENTER_DIR}
+set -e
+
+# 作業ディレクトリの指定（引数 or デフォルト）
+ENTER_DIR=$1
+TOOLBOX="/root/TOOL"
+VENV="${TOOLBOX}/venv"
+
+# 仮想環境の有効化
+if [ -f "${VENV}/bin/activate" ]; then
+    echo "Activating Python virtual environment at ${VENV}"
+    source "${VENV}/bin/activate"
 else
-	cd /home/${USER}
+    echo "Virtual environment not found at ${VENV}"
+    exit 1
 fi
-echo "Enabled venv for ${VENV}"
-source ${VENV}/bin/activate
-bash
-# deactivate
+
+# 作業ディレクトリへの移動
+if [[ -z "${ENTER_DIR}" ]]; then
+    cd /root
+elif [[ -d "${ENTER_DIR}" ]]; then
+    cd "${ENTER_DIR}"
+else
+    echo "Not found the directry: ${ENTER_DIR}"
+    cd /root
+fi
+
+echo "=========================="
+echo "Show the current working directory and Python version"
+echo "Current working directory: $(pwd)"
+echo "Python version: $(python --version)"
+echo "Virtual environment activated. Ready to work."
+echo "=========================="
+
+# 対話型シェル（ローカル開発用）
+exec bash

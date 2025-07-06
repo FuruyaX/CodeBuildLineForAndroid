@@ -1,49 +1,57 @@
 #!/bin/bash
+
+set -e
+
+# Dockerfile のパス
 ANDROID_DOCKERFILE="Android_Dockerfile"
 FLET_DOCKERFILE="Flet_Dockerfile"
 
-HOME="/home/${USER}"
-TOOLBOX="${HOME}/TOOL"
-BUILD_ROOM="${HOME}/buildroom"
+# 環境変数とパス
+TOOLBOX="/root/TOOL"
+BUILD_ROOM="/root/buildroom"
+AFTER_SHELL="afterbuild.sh"
+ENTER_POINT=${1:-$BUILD_ROOM}
 
-Android_TAG="androidbuilder:latest"
-Flet_TAG="fletbuilder:latest"
-TAGS="${Android_TAG} ${Flet_TAG}"
-AFTER_SHELL="TOOL/afterbuild.sh"
-TOOL="$(pwd)/TOOL"
+# Docker イメージタグ
+ANDROID_TAG="androidbuilder:latest"
+FLET_TAG="fletbuilder:latest"
 
-ENTER_POINT=$1
-BUILD_SRC="${BUILD_ROOM}/src"
+# bashrc のコピー（必要なら）
+cp ~/.bashrc TOOL/. || true
 
-ENTER_POINT=${ENTER_POINT:=${BUILD_ROOM}}
-
-# cp ~/.bashrc TOOL/.
-
-if [ ! -f "${AFTER_SHELL}" ];then
-	cp ${AFTER_SHELL} .
+# afterbuild.sh の配置確認
+if [ ! -f "TOOL/${AFTER_SHELL}" ]; then
+  echo " TOOL/${AFTER_SHELL} not found. Please ensure it exists."
+  exit 1
 fi
 
-cmd_run(){
-	echo "RUN: $@"
-	$@ && true || false
+# Docker イメージをビルドする関数
+# 引数: Dockerfileのパス, イメージタグ
+# 例: build_image "Dockerfile" "myimage:latest"
+# この関数は、指定されたDockerfileを使用してDockerイメージをビルドします。
+# 引数には、Dockerfileのパスとイメージのタグを指定します。
+# イメージのビルドには、TOOLBOXとAFTER_SHELLの環境変数を使用します。
+# ビルド後、イメージは指定されたタグで保存されます。
+build_image() {
+  local dockerfile=$1
+  local tag=$2
+  echo "🔨 Building image: $tag from $dockerfile"
+  docker buildx build \
+    --file $dockerfile \
+    --platform=linux/amd64 \
+    --tag $tag \
+    --build-arg TOOL=$TOOLBOX \
+    --build-arg START_SHELL=$AFTER_SHELL \
+    --build-arg AFTER_SHELL=$AFTER_SHELL \
+    .
 }
 
-isSkip(){
-	_tag=$1
-	if ! docker image ls | grep -q _tag;then
-		echo true
-	else
-		echo false
-	fi
-}
-isBUILD_Android=$(isSkip ${Android_TAG})
-isBUILD_Flet=$(isSkip ${Flet_TAG})
+# Android イメージのビルド
+build_image $ANDROID_DOCKERFILE $ANDROID_TAG
 
-if ${isBUILD_Android};then
-	cmd_run docker buildx build -f ${ANDROID_DOCKERFILE} . --platform=linux/amd64 -t ${Android_TAG} --build-arg HOME=${HOME} --build-arg TOOL=${TOOLBOX} --build-arg USER=$USER --build-arg UID=$(id $USER -u) --build-arg GID=$(id $USER -g) --build-arg PATH=$PATH --build-arg SRC=${BUILD_ROOM}/src --build-arg START_SHELL=$(basename ${AFTER_SHELL})
-fi
-if ${isBUILD_Flet};then
-	cmd_run docker buildx build -f ${FLET_DOCKERFILE} . -t ${Flet_TAG} --build-arg TOOL="${TOOLBOX}" --build-arg USER=${USER} --build-arg UID=$(id $USER -u) --build-arg GID=$(id $USER -g)  --build-arg AFTER_SHELL=$(basename ${AFTER_SHELL})
-fi
-# docker run -it -v ${BUILD_ROOM}/src:/home/${USER}/src -u builder --rm ${IMAGE} ${TOOLBOX}/$(basename ${AFTER_SHELL}) ${ENTER_POINT}
-docker run -it -v ${BUILD_ROOM}/src:/home/${USER}/src -u builder --rm ${Flet_TAG} bash ${TOOLBOX}/$(basename ${AFTER_SHELL}) ${ENTER_POINT}
+# Flet イメージのビルド
+build_image $FLET_DOCKERFILE $FLET_TAG
+
+# コンテナの起動
+# echo "Starting Android container..."
+# docker run -it --rm -v ${BUILD_ROOM}/src:/root/src $FLET_TAG bash ${TOOLBOX}/${AFTER_SHELL} ${ENTER_POINT}

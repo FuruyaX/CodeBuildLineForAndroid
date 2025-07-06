@@ -1,12 +1,9 @@
 FROM androidbuilder
-ARG USER
+
 ARG TOOL
-ARG UID
-ARG GID
 ARG AFTER_SHELL
-COPY --chown=${USER}:${USER} TOOL/requirement.txt ${TOOL}/.
-COPY --chown=${USER}:${USER} TOOL/${AFTER_SHELL} ${TOOL}/.
-USER root
+
+# Python & ビルドツールのインストール
 RUN apt update && apt install -y \
     python3-pip \
     build-essential \
@@ -14,7 +11,8 @@ RUN apt update && apt install -y \
     zlib1g-dev \
     libbz2-dev \
     libreadline-dev \
-    libsqlite3-dev curl \
+    libsqlite3-dev \
+    curl \
     libncursesw5-dev \
     tk-dev \
     libxml2-dev \
@@ -22,29 +20,26 @@ RUN apt update && apt install -y \
     libffi-dev \
     liblzma-dev \
     libmpv-dev \
-    python3.12-venv
-    # curl
-    # git \
-    # xz-utils \
+    python3.12-venv \
+    git \
+    xz-utils \
+    wget
 
-# python3.12 \
-RUN git clone https://github.com/pyenv/pyenv.git ${TOOL}/pyenv
-RUN chown ${USER}:${USER} -R ${TOOL}/pyenv
-RUN echo "export PYENV_ROOT='${TOOL}/pyenv'" >> ${TOOL}/.bashrc
-RUN echo "export PATH='${PATH}:${TOOL}/pyenv/bin'" >> ${TOOL}/.bashrc
-RUN echo 'eval "$(pyenv init -)"' >> ${TOOL}/.bashrc
-RUN echo "source ${TOOL}/venv/bin/activate" >> ${TOOL}/.bashrc
-RUN cp ${TOOL}/.bashrc /home/${USER}/.
-ENV PYENV="${TOOL}/pyenv/bin/pyenv"
-RUN ${PYENV} init -
-RUN ${PYENV} install 3.12.2
-RUN ${PYENV} global 3.12.2
-# Flutter
+# Python仮想環境の準備
+RUN python3.12 -m venv ${TOOL}/venv
+
+# Flet/Poetry の依存関係インストール
+COPY TOOL/requirement.txt ${TOOL}/
+RUN ${TOOL}/venv/bin/pip install --no-cache-dir -r ${TOOL}/requirement.txt
+
+# Flutter SDK のインストール
 WORKDIR ${TOOL}
-RUN wget https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.27.1-stable.tar.xz
-USER ${USER}
-RUN python3 -m venv ${TOOL}/venv
-RUN chmod 775 ${TOOL}/venv/bin/activate
-RUN ${TOOL}/venv/bin/activate && pip3.12 install --no-cache-dir --user -r requirements.txt
-CMD resource ${TOOL}/${AFTER_SHELL}
+RUN wget https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.27.1-stable.tar.xz && \
+    tar xf flutter_linux_3.27.1-stable.tar.xz && \
+    rm flutter_linux_3.27.1-stable.tar.xz
 
+# 後処理スクリプトの配置
+COPY TOOL/${AFTER_SHELL} ${TOOL}/
+
+# 実行時に仮想環境を有効化してシェル起動
+CMD ["/bin/bash", "-c", "source ${TOOL}/venv/bin/activate && bash ${TOOL}/${AFTER_SHELL}"]
