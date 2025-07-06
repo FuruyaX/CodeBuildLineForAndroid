@@ -15,7 +15,7 @@ phases:
       - echo "🔐 Logging in to Amazon ECR..."
       - aws --version
       - ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
-      - REGION=$(aws configure get region)
+      - REGION=$AWS_REGION
       - REPO_ANDROID=${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${ANDROID_IMAGE}
       - REPO_FLET=${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${FLET_IMAGE}
       - echo "Logging in to ECR..."
