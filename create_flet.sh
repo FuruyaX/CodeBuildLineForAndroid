@@ -1,6 +1,6 @@
 #!/bin/bash
 ANDROID_DOCKERFILE="Android_Dockerfile"
-FLET_DOCKERFILE="Dockerfile"
+FLET_DOCKERFILE="Flet_Dockerfile"
 
 HOME="/home/${USER}"
 TOOLBOX="${HOME}/TOOL"
