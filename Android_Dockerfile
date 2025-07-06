@@ -23,7 +23,7 @@ RUN apt update && apt install -y \
     lib32z1 \
     libbz2-1.0:amd64
 
-# 作業ディレクトリとツール配置
+# Working directory and environment setup
 RUN mkdir -p ${TOOL} ${BUILD_HOME}
 COPY TOOL/${START_SHELL} ${TOOL}/
 COPY TOOL/.bashrc ${TOOL}/
@@ -50,7 +50,7 @@ RUN mkdir -p ${ANDROID}/cmdline-tools/latest && \
     mkdir -p ${ANDROID}/${GRADLE}/latest && \
     mv ${GRADLE}/* ${ANDROID}/${GRADLE}/latest/
 
-# SDK ライセンス同意とインストール
+# Install Android SDK components and accept licenses 
 RUN mkdir -p ~/.android && touch ~/.android/repositories.cfg
 RUN yes | ${SDK} --licenses
 RUN yes | ${SDK} --sdk_root=${ANDROID} \

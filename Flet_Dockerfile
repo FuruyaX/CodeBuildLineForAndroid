@@ -3,7 +3,7 @@ FROM androidbuilder
 ARG TOOL
 ARG AFTER_SHELL
 
-# Python & ビルドツールのインストール
+# Install Python and build tools
 RUN apt update && apt install -y \
     python3-pip \
     build-essential \
@@ -25,21 +25,21 @@ RUN apt update && apt install -y \
     xz-utils \
     wget
 
-# Python仮想環境の準備
+# Setup Virtual environment and directories
 RUN python3.12 -m venv ${TOOL}/venv
 
-# Flet/Poetry の依存関係インストール
+# Install Flet and Poetry dependencies
 COPY TOOL/requirement.txt ${TOOL}/
 RUN ${TOOL}/venv/bin/pip install --no-cache-dir -r ${TOOL}/requirement.txt
 
-# Flutter SDK のインストール
+# Install Flutter SDK
 WORKDIR ${TOOL}
 RUN wget https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.27.1-stable.tar.xz && \
     tar xf flutter_linux_3.27.1-stable.tar.xz && \
     rm flutter_linux_3.27.1-stable.tar.xz
 
-# 後処理スクリプトの配置
+# Shell script to run after the container starts
 COPY TOOL/${AFTER_SHELL} ${TOOL}/
 
-# 実行時に仮想環境を有効化してシェル起動
+# Set the entrypoint to activate the virtual environment and run the specified shell script
 CMD ["/bin/bash", "-c", "source ${TOOL}/venv/bin/activate && bash ${TOOL}/${AFTER_SHELL}"]

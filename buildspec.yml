@@ -12,7 +12,7 @@ env:
 phases:
   pre_build:
     commands:
-      - echo "🔐 Logging in to Amazon ECR..."
+      - echo "Logging in to Amazon ECR..."
       - aws --version
       - ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
       - REGION=$AWS_REGION
@@ -24,19 +24,19 @@ phases:
 
   build:
     commands:
-      - echo "⚙️ Running create_flet.sh to build Docker images..."
+      - echo "Running create_flet.sh to build Docker images..."
       - chmod +x create_flet.sh
       - ./create_flet.sh
-      - echo "🏷️ Tagging images for ECR..."
+      - echo "Tagging images for ECR..."
       - docker tag androidbuilder:latest $REPO_ANDROID:latest
       - docker tag fletbuilder:latest $REPO_FLET:latest
 
   post_build:
     commands:
-      - echo "🚀 Pushing images to ECR..."
+      - echo "Pushing images to ECR..."
       - docker push $REPO_ANDROID:latest
       - docker push $REPO_FLET:latest
-      - echo "✅ Build and push complete."
+      - echo "Build and push complete."
 
 artifacts:
   files:

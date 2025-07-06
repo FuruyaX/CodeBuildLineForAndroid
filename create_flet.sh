@@ -2,40 +2,38 @@
 
 set -e
 
-# Dockerfile のパス
+# Dockerfile paths
 ANDROID_DOCKERFILE="Android_Dockerfile"
 FLET_DOCKERFILE="Flet_Dockerfile"
 
-# 環境変数とパス
+# Environment variables
 TOOLBOX="/root/TOOL"
 BUILD_ROOM="/root/buildroom"
 AFTER_SHELL="afterbuild.sh"
 ENTER_POINT=${1:-$BUILD_ROOM}
 
-# Docker イメージタグ
+# Docker Image tags
 ANDROID_TAG="androidbuilder:latest"
 FLET_TAG="fletbuilder:latest"
 
-# bashrc のコピー（必要なら）
+# Copy .bashrc
 cp ~/.bashrc TOOL/. || true
 
-# afterbuild.sh の配置確認
+# Check path of afterbuild.sh
 if [ ! -f "TOOL/${AFTER_SHELL}" ]; then
   echo " TOOL/${AFTER_SHELL} not found. Please ensure it exists."
   exit 1
 fi
 
-# Docker イメージをビルドする関数
-# 引数: Dockerfileのパス, イメージタグ
-# 例: build_image "Dockerfile" "myimage:latest"
-# この関数は、指定されたDockerfileを使用してDockerイメージをビルドします。
-# 引数には、Dockerfileのパスとイメージのタグを指定します。
-# イメージのビルドには、TOOLBOXとAFTER_SHELLの環境変数を使用します。
-# ビルド後、イメージは指定されたタグで保存されます。
+# Build for Docker images
+# This function builds a Docker image from the specified Dockerfile and tags it.
+# Arguments: Dockerfile path, Image tag
+# The function uses Docker Buildx to build the image for the specified platform (linux/amd64).
+# It also passes build arguments for TOOLBOX and AFTER_SHELL to the Dockerfile.
 build_image() {
   local dockerfile=$1
   local tag=$2
-  echo "🔨 Building image: $tag from $dockerfile"
+  echo "Building image: $tag from $dockerfile"
   docker buildx build \
     --file $dockerfile \
     --platform=linux/amd64 \
@@ -46,12 +44,14 @@ build_image() {
     .
 }
 
-# Android イメージのビルド
+# Android Image build
 build_image $ANDROID_DOCKERFILE $ANDROID_TAG
 
-# Flet イメージのビルド
+# Flet Image build
+# This builds the Flet Docker image using the specified Dockerfile and tags it.
 build_image $FLET_DOCKERFILE $FLET_TAG
 
-# コンテナの起動
+# Run the Android container
+# This command runs the Android Docker container interactively, mounting the build room source directory.
 # echo "Starting Android container..."
 # docker run -it --rm -v ${BUILD_ROOM}/src:/root/src $FLET_TAG bash ${TOOLBOX}/${AFTER_SHELL} ${ENTER_POINT}
