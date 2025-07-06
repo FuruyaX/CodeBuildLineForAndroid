@@ -1,0 +1,42 @@
+version: 0.2
+
+env:
+  variables:
+    ANDROID_IMAGE: builder/android
+    FLET_IMAGE: builder/flet
+  git-credential-helper: yes
+  shell: bash
+
+phases:
+  pre_build:
+    commands:
+      - echo "🔐 Logging in to Amazon ECR..."
+      - aws --version
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+      - REGION=$(aws configure get region)
+      - REPO_ANDROID=${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${ANDROID_IMAGE}
+      - REPO_FLET=${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${FLET_IMAGE}
+      - echo "Logging in to ECR..."
+      - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO_ANDROID
+      - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO_FLET
+
+  build:
+    commands:
+      - echo "⚙️ Running create_flet.sh to build Docker images..."
+      - chmod +x create_flet.sh
+      - ./create_flet.sh
+      - echo "🏷️ Tagging images for ECR..."
+      - docker tag androidbuilder:latest $REPO_ANDROID:latest
+      - docker tag fletbuilder:latest $REPO_FLET:latest
+
+  post_build:
+    commands:
+      - echo "🚀 Pushing images to ECR..."
+      - docker push $REPO_ANDROID:latest
+      - docker push $REPO_FLET:latest
+      - echo "✅ Build and push complete."
+
+artifacts:
+  files:
+    - '**/*'
+  discard-paths: yes
