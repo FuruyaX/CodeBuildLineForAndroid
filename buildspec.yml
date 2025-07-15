@@ -1,44 +1,77 @@
+# ビルド環境パイプライン用のbuildspec.yml
+# このファイルは `build-env-repo` のルートに配置されます。
+
 version: 0.2
 
+# 環境変数
+# AWS_ACCOUNT_ID と AWS_REGION はCodeBuildの環境変数として自動的に設定されることが多いですが、
+# 明示的に設定することも可能です。
 env:
   variables:
-    # Define the Docker images to be built and pushed
-    # These images will be pushed to Amazon ECR
-    ANDROID_IMAGE: builder/android
-    FLET_IMAGE: builder/flet
-  git-credential-helper: yes
-  shell: bash
+    # ECRリポジトリ名 (適宜変更してください)
+    FLET_ECR_REPO_NAME: "flet-build-env"
+    ANDROID_ECR_REPO_NAME: "android-build-env"
+    # イメージタグ (ビルドIDやコミットハッシュを使用するとユニークになります)
+    IMAGE_TAG: "${CODEBUILD_RESOLVED_SOURCE_VERSION}" # コミットハッシュをタグとして使用
 
 phases:
   pre_build:
     commands:
-      - echo "Logging in to Amazon ECR..."
-      - aws --version
-      - ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
-      - REGION=$AWS_REGION
-      - REPO_ANDROID=${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${ANDROID_IMAGE}
-      - REPO_FLET=${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${FLET_IMAGE}
-      - echo "Logging in to ECR..."
-      - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO_ANDROID
-      - aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REPO_FLET
+      - echo "ビルド環境パイプラインのpre_buildフェーズを開始します..."
+      # AWSアカウントIDとリージョンを取得 (CodeBuild環境変数から)
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - AWS_REGION=${AWS_DEFAULT_REGION} # または適切なリージョンを設定
+      - echo "AWSアカウントID: ${AWS_ACCOUNT_ID}, リージョン: ${AWS_REGION}"
+
+      # ECRリポジトリのURIを構築
+      - FLET_ECR_REPOSITORY_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${FLET_ECR_REPO_NAME}"
+      - ANDROID_ECR_REPOSITORY_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ANDROID_ECR_REPO_NAME}"
+      - echo "Flet ECRリポジトリURI: ${FLET_ECR_REPOSITORY_URI}"
+      - echo "Android ECRリポジトリURI: ${ANDROID_ECR_REPOSITORY_URI}"
+
+      # ECRにログイン
+      # CodeBuildのサービスロールにECRへのプッシュ権限があることを確認してください。
+      - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+      - echo "ECRへのログインが完了しました。"
 
   build:
     commands:
-      - echo "Running create_flet.sh to build Docker images..."
+      - echo "ビルド環境パイプラインのbuildフェーズを開始します..."
+      - echo "create_flet.sh を実行してDockerイメージをビルドします..."
+      # create_flet.sh スクリプトを実行可能にする
       - chmod +x create_flet.sh
+      # create_flet.sh スクリプトを実行
       - ./create_flet.sh
-      - echo "Tagging images for ECR..."
-      - docker tag androidbuilder:latest $REPO_ANDROID:latest
-      - docker tag fletbuilder:latest $REPO_FLET:latest
+      - echo "create_flet.sh によるDockerイメージのビルドが完了しました。"
+
+      # create_flet.sh が androidbuilder:latest と fletbuilder:latest を作成すると仮定
+      # ECRにプッシュするために、これらのローカルイメージにECRリポジトリのタグを付ける
+      - echo "ECRプッシュ用のタグ付けを開始します..."
+      - docker tag androidbuilder:latest ${ANDROID_ECR_REPOSITORY_URI}:${IMAGE_TAG}
+      - docker tag androidbuilder:latest ${ANDROID_ECR_REPOSITORY_URI}:latest
+      - docker tag fletbuilder:latest ${FLET_ECR_REPOSITORY_URI}:${IMAGE_TAG}
+      - docker tag fletbuilder:latest ${FLET_ECR_REPOSITORY_URI}:latest
+      - echo "ECRプッシュ用のタグ付けが完了しました。"
 
   post_build:
     commands:
-      - echo "Pushing images to ECR..."
-      - docker push $REPO_ANDROID:latest
-      - docker push $REPO_FLET:latest
-      - echo "Build and push complete."
+      - echo "ビルド環境パイプラインのpost_buildフェーズを開始します..."
 
-artifacts:
-  files:
-    - '**/*'
-  discard-paths: yes
+      # Android DockerイメージをECRにプッシュ
+      - echo "Android DockerイメージをECRにプッシュします..."
+      - docker push ${ANDROID_ECR_REPOSITORY_URI}:${IMAGE_TAG}
+      - docker push ${ANDROID_ECR_REPOSITORY_URI}:latest
+      - echo "Android Dockerイメージのプッシュが完了しました。"
+
+      # Flet DockerイメージをECRにプッシュ
+      - echo "Flet DockerイメージをECRにプッシュします..."
+      - docker push ${FLET_ECR_REPOSITORY_URI}:${IMAGE_TAG}
+      - docker push ${FLET_ECR_REPOSITORY_URI}:latest
+      - echo "Flet Dockerイメージのプッシュが完了しました。"
+
+# ビルド成果物（このパイプラインでは特にないが、必要に応じて定義可能）
+# CodeBuildの出力アーティファクトとして、例えばイメージURIをファイルに出力し、
+# 後続のパイプラインに渡すことも可能です。
+# artifacts:
+#   files:
+#     - 'imageDetail.json'
