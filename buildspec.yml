@@ -20,7 +20,7 @@ phases:
       - echo "ビルド環境パイプラインのpre_buildフェーズを開始します..."
       # AWSアカウントIDとリージョンを取得 (CodeBuild環境変数から)
       - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-      - AWS_REGION=${AWS_DEFAULT_REGION} # または適切なリージョンを設定
+      - AWS_REGION=${AWS_DEFAULT_REGION}
       - echo "AWSアカウントID: ${AWS_ACCOUNT_ID}, リージョン: ${AWS_REGION}"
 
       # ECRリポジトリのURIを構築
